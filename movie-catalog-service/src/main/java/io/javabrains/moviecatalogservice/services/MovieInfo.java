@@ -14,32 +14,32 @@ import org.springframework.web.client.RestTemplate;
 @Service
 public class MovieInfo {
 
-    private static final String INFO_SERVICE = "movieInfoService";
+  private static final String INFO_SERVICE = "movieInfoService";
 
-    @Autowired
-    private RestTemplate restTemplate;
+  @Autowired
+  private RestTemplate restTemplate;
 
 
+  @RateLimiter(name = INFO_SERVICE)
+  @Retry(name = INFO_SERVICE, fallbackMethod = "getFallbackCatalogItem")
+  @CircuitBreaker(name = INFO_SERVICE, fallbackMethod = "getFallbackCatalogItem")
+  public CatalogItem getCatalogItem(Rating rating) {
+    Movie movie = restTemplate.getForObject(
+        "http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
+    return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+  }
 
-    @RateLimiter(name = INFO_SERVICE)
-    @Retry(name = INFO_SERVICE, fallbackMethod = "getFallbackCatalogItem")
-    @CircuitBreaker(name=INFO_SERVICE , fallbackMethod = "getFallbackCatalogItem")
-    public CatalogItem getCatalogItem(Rating rating) {
-        Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId(), Movie.class);
-        return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
-    }
+  @CircuitBreaker(name = INFO_SERVICE, fallbackMethod = "getFallbackCatalogItem")
+  public CatalogItem getSlowCatalogItem(Rating rating) {
+    Movie movie = restTemplate.getForObject(
+        "http://movie-info-service/movies/" + rating.getMovieId() + "/slow", Movie.class);
+    return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
+  }
 
-    @CircuitBreaker(name=INFO_SERVICE , fallbackMethod = "getFallbackCatalogItem")
-    public CatalogItem getSlowCatalogItem(Rating rating) {
-        Movie movie = restTemplate.getForObject("http://movie-info-service/movies/" + rating.getMovieId() + "/slow", Movie.class);
-        return new CatalogItem(movie.getName(), movie.getDescription(), rating.getRating());
-    }
-
-    public CatalogItem getFallbackCatalogItem(Rating rating, Throwable t) {
-        System.out.println("*******Catalog Item Fallback Activated*******");
-        return new CatalogItem("No Movie", "", rating.getRating());
-    }
-
+  public CatalogItem getFallbackCatalogItem(Rating rating, Throwable t) {
+    System.out.println("*******Catalog Item Fallback Activated*******");
+    return new CatalogItem("No Movie", "", rating.getRating());
+  }
 
 
 }
